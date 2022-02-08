@@ -14,11 +14,13 @@
 #   --init             Initialize install manifests with specified git repo or anyenv/anyenv-install
 #   --force-init       Initialize install manifests without confirmation
 #   --update           Update install manifests
+#   --link             Link install **envs
 #
 set -e
 [ -n "$ANYENV_DEBUG" ] && set -x
 
-ANYENV_DEFAULT_MANIFEST_GIT_REPO="https://github.com/anyenv/anyenv-install.git"
+#ANYENV_DEFAULT_MANIFEST_GIT_REPO="https://github.com/anyenv/anyenv-install.git"
+ANYENV_DEFAULT_MANIFEST_GIT_REPO=("https://github.com/anyenvs/anyenv-install.git" "main")
 
 if [ -z ${ANYENV_DEFINITION_ROOT+x} ]; then
   # $XDG_CONFIG_HOME/anyenv/anyenv-install or ~/.config/anyenv/anyenv-install
@@ -118,8 +120,8 @@ echoe() {
 }
 
 initialize_manifest() {
-  git_url="${ARGUMENTS[0]:-$ANYENV_DEFAULT_MANIFEST_GIT_REPO}"
-  git_ref="${ARGUMENTS[1]}"
+  git_url="${ARGUMENTS[0]:-${ANYENV_DEFAULT_MANIFEST_GIT_REPO[0]}}"
+  git_ref="${ARGUMENTS[1]:-${ANYENV_DEFAULT_MANIFEST_GIT_REPO[1]}}"
   local force="$1"
   if [ ! -d $ANYENV_DEFINITION_ROOT ]; then
     echo "Manifest directory doesn't exist: ${ANYENV_DEFINITION_ROOT}"
@@ -158,6 +160,23 @@ update_manifest() {
   echo "Updating manifest directory... (${ANYENV_DEFINITION_ROOT})"
   pushd $ANYENV_DEFINITION_ROOT > /dev/null
   git pull --no-rebase --ff
+  popd > /dev/null
+}
+
+link_manifest() {
+  local home_dir="$1"
+  local anyenv_root="$2"
+  local env="${ARGUMENTS[0]}"
+  local options="${OPTIONS}"
+  if [ ! -d $ANYENV_DEFINITION_ROOT ]; then
+    echo "Manifest directory doesn't exist: ${ANYENV_DEFINITION_ROOT}"
+    echo "Try anyenv install --init"
+    return 1
+  fi
+  echo "Linking directory... ($anyenv_root/envs/${env})"
+  test -L ~/.${env} -a "$FORCE" != "true" && echo "Linking directory exist, use --force to override" && return
+  pushd $ANYENV_DEFINITION_ROOT > /dev/null
+  ln -svnf $anyenv_root/envs/${env} $home_dir/.${env}
   popd > /dev/null
 }
 
@@ -202,6 +221,7 @@ if [ "$1" = "--complete" ]; then
   echo --init
   echo --force-init
   echo --update
+  echo --link
   exit 0
 fi
 
@@ -240,6 +260,10 @@ for option in "${OPTIONS[@]}"; do
     ;;
   "update" )
     update_manifest
+    exit $?
+    ;;
+  "link" )
+    link_manifest $HOME $ANYENV_ROOT
     exit $?
     ;;
   * )
