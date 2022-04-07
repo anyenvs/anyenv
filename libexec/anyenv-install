@@ -176,7 +176,7 @@ link_manifest() {
   echo "Linking directory... ($anyenv_root/envs/${env})"
   test -L ~/.${env} -a "$FORCE" != "true" && echo "Linking directory exist, use --force to override" && return
   pushd $ANYENV_DEFINITION_ROOT > /dev/null
-  ln -svnf $anyenv_root/envs/${env} $home_dir/.${env}
+  ( cd $home_dir && ln -svnf $anyenv_root/envs/${env} .${env} )
   popd > /dev/null
 }
 
@@ -263,7 +263,7 @@ for option in "${OPTIONS[@]}"; do
     exit $?
     ;;
   "link" )
-    link_manifest $HOME $ANYENV_ROOT
+    link_manifest $HOME ${ANYENV_ROOT//$HOME\//}
     exit $?
     ;;
   * )
